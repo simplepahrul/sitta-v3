@@ -1,0 +1,25 @@
+<template id="tpl-modal">
+  <transition name="fade">
+    <div
+      v-if="show"
+      class="modal d-block"
+      style="background: rgba(0, 0, 0, 0.5)"
+      @click.self="$emit('close')"
+    >
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">{{ title }}</h5>
+            <button
+              type="button"
+              class="btn-close"
+              @click="$emit('close')"
+            ></button>
+          </div>
+          <div class="modal-body d-flex flex-column gap-3"><slot></slot></div>
+          <div class="modal-footer"><slot name="footer"></slot></div>
+        </div>
+      </div>
+    </div>
+  </transition>
+</template>

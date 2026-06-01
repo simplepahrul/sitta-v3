@@ -1,0 +1,8 @@
+<template id="tpl-badge">
+  <div class="tooltip-wrapper d-inline-block">
+    <span class="badge" :class="statusClass"
+      >{{ statusIcon }} {{ statusLabel }}</span
+    >
+    <div class="tooltip-box" v-html="catatan"></div>
+  </div>
+</template>

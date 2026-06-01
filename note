@@ -1,0 +1,44 @@
+/*
+author: M. Pahrul Amri - 054118657
+
+struktur:
+sitta-v3/
+│
+├── index.html (
+                page : login + app (dashboard)
+                tab : stock + tracking
+                )
+│
+├── css/
+│   └── style.css
+│
+├── data/
+│   └── dataBahanAjar.json
+│
+├── js/
+│   ├── login-app.js
+│   ├── app.js
+│   │
+│   ├── services/
+│   │   └── api.js 
+│   │
+│   └── components/
+│       ├── stock-table.js
+│       ├── do-tracking.js
+│       ├── order-form.js
+│       ├── status-badge.js
+│       └── app-modal.js
+│
+└── templates/
+    ├── stock-table.html
+    ├── do-tracking.html
+    ├── order-form.html
+    ├── status-badge.html
+    └── app-modal.html
+
+note:
+html
+css
+javascript (vue.js)
+bootstrap
+*/

@@ -1,0 +1,335 @@
+<template id="tpl-stock">
+  <div>
+    <!-- FILTER -->
+    <div class="card border-0 shadow-sm p-4 mb-4">
+      <div class="row g-3 align-items-end">
+        <div class="col-lg-3 col-md-6">
+          <label class="form-label">Cari Data</label>
+          <input
+            type="text"
+            class="form-control"
+            placeholder="Cari kode / judul..."
+            v-model="search"
+          />
+        </div>
+        <div class="col-lg-2 col-md-6">
+          <label class="form-label">Filter UPBJJ</label>
+          <select class="form-select" v-model="selectedUpbjj">
+            <option value="">Semua UPBJJ</option>
+            <option v-for="u in upbjjList" :key="u">{{ u }}</option>
+          </select>
+        </div>
+        <div class="col-lg-2 col-md-6" v-if="selectedUpbjj">
+          <label class="form-label">Kategori</label>
+          <select class="form-select" v-model="selectedKategori">
+            <option value="">Semua Kategori</option>
+            <option v-for="k in kategoriList" :key="k">{{ k }}</option>
+          </select>
+        </div>
+        <div class="col-lg-2 col-md-6">
+          <label class="form-label">Sort Data</label>
+          <select class="form-select" v-model="sortBy">
+            <option value="">Default</option>
+            <option value="judul">Judul</option>
+            <option value="qty">Qty</option>
+            <option value="harga">Harga</option>
+          </select>
+        </div>
+        <div class="col-lg-1 col-md-6">
+          <div class="form-check mt-4">
+            <input
+              class="form-check-input"
+              type="checkbox"
+              v-model="warningOnly"
+              id="reorderCheck"
+            />
+            <label class="form-check-label" for="reorderCheck">Reorder</label>
+          </div>
+        </div>
+        <div class="col-auto">
+          <button class="btn btn-secondary" @click="resetFilter">Reset</button>
+        </div>
+        <div class="col-auto">
+          <button class="btn btn-primary" @click="showModalTambah = true">
+            + Tambah
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- STAT -->
+    <div class="row g-3 mb-4">
+      <div class="col-md-4">
+        <div class="card text-center border-0 shadow-sm p-3">
+          <h6 class="text-primary">📚 Total Buku</h6>
+          <h3>{{ filteredStok.length }}</h3>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card text-center border-0 shadow-sm p-3">
+          <h6 class="text-success">📦 Total Stok</h6>
+          <h3>{{ totalQty }} buah</h3>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card text-center border-0 shadow-sm p-3">
+          <h6 class="text-danger">⚠️ Perlu Reorder</h6>
+          <h3>{{ reorderCount }}</h3>
+        </div>
+      </div>
+    </div>
+
+    <!-- TABLE -->
+    <div class="table-responsive">
+      <table class="table table-striped table-hover">
+        <thead class="table-primary">
+          <tr>
+            <th>No</th>
+            <th>Kode / Judul</th>
+            <th>Kategori</th>
+            <th>UPBJJ</th>
+            <th>Lokasi Rak</th>
+            <th>Harga</th>
+            <th>Qty</th>
+            <th>Safety</th>
+            <th>Status</th>
+            <th>Aksi</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="(item, index) in filteredStok" :key="item.kode">
+            <td>{{ index + 1 }}</td>
+            <td><strong>{{ item.kode }}</strong><br />{{ item.judul }}</td>
+            <td>{{ item.kategori }}</td>
+            <td>{{ item.upbjj }}</td>
+            <td>{{ item.lokasiRak }}</td>
+            <td>{{ formatRupiah(item.harga) }}</td>
+            <td>{{ formatBuah(item.qty) }}</td>
+            <td>{{ formatBuah(item.safety) }}</td>
+            <td>
+              <status-badge
+                :qty="item.qty"
+                :safety="item.safety"
+                :catatan="item.catatanHTML"
+              ></status-badge>
+            </td>
+            <td>
+              <button
+                class="btn btn-warning btn-sm me-1"
+                @click="openEdit(item)"
+              >
+                ✏️
+              </button>
+              <button class="btn btn-danger btn-sm" @click="hapusData(item)">
+                🗑️
+              </button>
+            </td>
+          </tr>
+          <tr v-if="filteredStok.length === 0">
+            <td colspan="10" class="text-center text-muted py-3">
+              Data tidak ditemukan
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- MODAL TAMBAH -->
+    <app-modal
+      title="Tambah Data Bahan Ajar"
+      :show="showModalTambah"
+      @close="showModalTambah = false"
+    >
+      <div>
+        <label class="form-label">Kode Mata Kuliah</label>
+        <input
+          type="text"
+          class="form-control"
+          placeholder="Contoh: EKMA4116"
+          v-model="newStok.kode"
+          @keyup.enter="tambahStok"
+        />
+        <small class="text-danger" v-if="errNew.kode">{{ errNew.kode }}</small>
+      </div>
+      <div>
+        <label class="form-label">Judul Mata Kuliah</label>
+        <input
+          type="text"
+          class="form-control"
+          placeholder="Masukkan judul"
+          v-model="newStok.judul"
+          @keyup.enter="tambahStok"
+        />
+        <small class="text-danger" v-if="errNew.judul"
+          >{{ errNew.judul }}</small
+        >
+      </div>
+      <div>
+        <label class="form-label">Kategori</label>
+        <select class="form-select" v-model="newStok.kategori">
+          <option value="">Pilih Kategori</option>
+          <option v-for="k in kategoriList" :key="k">{{ k }}</option>
+        </select>
+        <small class="text-danger" v-if="errNew.kategori"
+          >{{ errNew.kategori }}</small
+        >
+      </div>
+      <div>
+        <label class="form-label">UPBJJ</label>
+        <select class="form-select" v-model="newStok.upbjj">
+          <option value="">Pilih UPBJJ</option>
+          <option v-for="u in upbjjList" :key="u">{{ u }}</option>
+        </select>
+        <small class="text-danger" v-if="errNew.upbjj"
+          >{{ errNew.upbjj }}</small
+        >
+      </div>
+      <div>
+        <label class="form-label">Lokasi Rak</label>
+        <input
+          type="text"
+          class="form-control"
+          placeholder="Contoh: R1-A3"
+          v-model="newStok.lokasiRak"
+        />
+      </div>
+      <div>
+        <label class="form-label">Harga (Rp)</label>
+        <input
+          type="number"
+          class="form-control"
+          v-model.number="newStok.harga"
+          min="0"
+        />
+        <small class="text-danger" v-if="errNew.harga"
+          >{{ errNew.harga }}</small
+        >
+      </div>
+      <div>
+        <label class="form-label">Jumlah Stok</label>
+        <input
+          type="number"
+          class="form-control"
+          v-model.number="newStok.qty"
+          min="0"
+        />
+        <small class="text-danger" v-if="errNew.qty">{{ errNew.qty }}</small>
+      </div>
+      <div>
+        <label class="form-label">Safety Stock</label>
+        <input
+          type="number"
+          class="form-control"
+          v-model.number="newStok.safety"
+          min="0"
+        />
+      </div>
+      <div>
+        <label class="form-label">Catatan (HTML diizinkan)</label>
+        <textarea class="form-control" v-model="newStok.catatanHTML"></textarea>
+      </div>
+      <template v-slot:footer>
+        <button class="btn btn-secondary" @click="showModalTambah = false">
+          Batal
+        </button>
+        <button class="btn btn-primary" @click="tambahStok">Simpan</button>
+      </template>
+    </app-modal>
+
+    <!-- MODAL EDIT -->
+    <app-modal
+      title="Edit Data Bahan Ajar"
+      :show="showModalEdit"
+      @close="showModalEdit = false"
+    >
+      <div v-if="editStok">
+        <div>
+          <label class="form-label">Judul Mata Kuliah</label>
+          <input
+            type="text"
+            class="form-control"
+            v-model="editStok.judul"
+            @keyup.enter="updateData"
+          />
+          <small class="text-danger" v-if="errEdit.judul"
+            >{{ errEdit.judul }}</small
+          >
+        </div>
+        <div class="mt-2">
+          <label class="form-label">Lokasi Rak</label>
+          <input
+            type="text"
+            class="form-control"
+            v-model="editStok.lokasiRak"
+          />
+        </div>
+        <div class="mt-2">
+          <label class="form-label">Harga (Rp)</label>
+          <input
+            type="number"
+            class="form-control"
+            v-model.number="editStok.harga"
+            min="0"
+            @keyup.enter="updateData"
+          />
+          <small class="text-danger" v-if="errEdit.harga"
+            >{{ errEdit.harga }}</small
+          >
+        </div>
+        <div class="mt-2">
+          <label class="form-label">Jumlah Stok</label>
+          <input
+            type="number"
+            class="form-control"
+            v-model.number="editStok.qty"
+            min="0"
+            @keyup.enter="updateData"
+          />
+          <small class="text-danger" v-if="errEdit.qty"
+            >{{ errEdit.qty }}</small
+          >
+        </div>
+        <div class="mt-2">
+          <label class="form-label">Safety Stock</label>
+          <input
+            type="number"
+            class="form-control"
+            v-model.number="editStok.safety"
+            min="0"
+          />
+        </div>
+        <div class="mt-2">
+          <label class="form-label">Catatan</label>
+          <textarea
+            class="form-control"
+            v-model="editStok.catatanHTML"
+          ></textarea>
+        </div>
+      </div>
+      <template v-slot:footer>
+        <button class="btn btn-secondary" @click="showModalEdit = false">
+          Batal
+        </button>
+        <button class="btn btn-warning" @click="updateData">Update</button>
+      </template>
+    </app-modal>
+
+    <!-- MODAL HAPUS -->
+    <app-modal
+      title="Konfirmasi Hapus"
+      :show="showModalHapus"
+      @close="showModalHapus = false"
+    >
+      <p v-if="hapusTarget">
+        Yakin menghapus <strong>{{ hapusTarget.judul }}</strong> ({{
+        hapusTarget.kode }})?
+      </p>
+      <template v-slot:footer>
+        <button class="btn btn-secondary" @click="showModalHapus = false">
+          Batal
+        </button>
+        <button class="btn btn-danger" @click="konfirmasiHapus">Hapus</button>
+      </template>
+    </app-modal>
+  </div>
+</template>

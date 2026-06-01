@@ -1,0 +1,220 @@
+<template id="tpl-tracking">
+  <div>
+    <!-- SEARCH -->
+    <div class="card border-0 shadow-sm p-3 mb-4">
+      <div class="d-flex flex-wrap align-items-center gap-3">
+        <input
+          type="text"
+          class="form-control w-auto flex-grow-1"
+          placeholder="Cari Nomor DO atau NIM... (Enter: cari, Esc: reset)"
+          v-model="searchDO"
+          @keyup.enter="cariTracking"
+          @keyup.esc="resetCari"
+        />
+        <button class="btn btn-primary" @click="cariTracking">Cari</button>
+        <button class="btn btn-success" @click="openModalTambah">
+          + Tambah DO
+        </button>
+      </div>
+      <small class="text-muted mt-2"
+        >Tekan Enter untuk cari, Esc untuk reset</small
+      >
+    </div>
+
+    <!-- HASIL TRACKING -->
+    <div v-if="hasilTracking" class="card border-0 shadow-sm p-4 mb-4">
+      <div class="d-flex justify-content-between flex-wrap gap-3">
+        <div>
+          <h4>{{ hasilTracking.nomorDO }}</h4>
+          <p class="mb-1">👤 NIM: {{ hasilTracking.nim }}</p>
+          <p class="mb-1">👤 Nama: {{ hasilTracking.nama }}</p>
+          <p class="mb-1">🚚 Ekspedisi: {{ hasilTracking.ekspedisi }}</p>
+          <p class="mb-1">📦 Paket: {{ hasilTracking.paket }}</p>
+          <p class="mb-1">📅 Tanggal Kirim: {{ hasilTracking.tanggalKirim }}</p>
+          <p class="mb-1">💰 Total: {{ formatRupiah(hasilTracking.total) }}</p>
+        </div>
+        <div>
+          <span
+            class="badge fs-6"
+            :class="hasilTracking.status === 'Selesai' ? 'bg-success' : 'bg-warning text-dark'"
+          >
+            {{ hasilTracking.status }}
+          </span>
+        </div>
+      </div>
+      <hr />
+      <h5 class="mb-3">Riwayat Pengiriman</h5>
+      <div
+        v-for="(item, index) in hasilTracking.perjalanan"
+        :key="index"
+        class="timeline-item"
+      >
+        <strong>{{ item.waktu }}</strong>
+        <p class="mb-0 text-muted">{{ item.keterangan }}</p>
+      </div>
+      <hr />
+      <div class="mt-2">
+        <h6>Tambah Status Perjalanan</h6>
+        <div class="d-flex gap-2">
+          <input
+            type="text"
+            class="form-control"
+            placeholder="Keterangan status..."
+            v-model="newProgress"
+            @keyup.enter="tambahProgress"
+          />
+          <button class="btn btn-outline-primary" @click="tambahProgress">
+            + Tambah
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- NOT FOUND -->
+    <div v-if="notFound" class="alert alert-danger">
+      Nomor DO / NIM tidak ditemukan
+    </div>
+
+    <!-- TABEL DO -->
+    <div class="card border-0 shadow-sm p-3">
+      <h5 class="mb-3">📋 Daftar Delivery Order</h5>
+      <div class="table-responsive">
+        <table class="table table-striped table-hover">
+          <thead class="table-primary">
+            <tr>
+              <th>No</th>
+              <th>Nomor DO</th>
+              <th>NIM</th>
+              <th>Nama</th>
+              <th>Ekspedisi</th>
+              <th>Paket</th>
+              <th>Tanggal Kirim</th>
+              <th>Total</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="(item, index) in trackingList"
+              :key="item.nomorDO"
+              @click="pilihDO(item)"
+              style="cursor: pointer"
+            >
+              <td>{{ index + 1 }}</td>
+              <td>{{ item.nomorDO }}</td>
+              <td>{{ item.nim }}</td>
+              <td>{{ item.nama }}</td>
+              <td>{{ item.ekspedisi }}</td>
+              <td>{{ item.paket }}</td>
+              <td>{{ item.tanggalKirim }}</td>
+              <td>{{ formatRupiah(item.total) }}</td>
+              <td>
+                <span
+                  class="badge"
+                  :class="item.status === 'Selesai' ? 'bg-success' : 'bg-warning text-dark'"
+                  >{{ item.status }}</span
+                >
+              </td>
+            </tr>
+            <tr v-if="trackingList.length === 0">
+              <td colspan="9" class="text-center text-muted py-3">
+                Belum ada data DO
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- MODAL TAMBAH DO -->
+    <app-modal
+      title="Tambah Delivery Order"
+      :show="showModalTambah"
+      @close="showModalTambah = false"
+    >
+      <div>
+        <label class="form-label">Nomor DO</label>
+        <input
+          type="text"
+          class="form-control"
+          :value="newDO.nomorDO"
+          readonly
+        />
+      </div>
+      <div>
+        <label class="form-label">NIM</label>
+        <input
+          type="text"
+          class="form-control"
+          v-model="newDO.nim"
+          placeholder="Masukkan NIM"
+        />
+        <small class="text-danger" v-if="errDO.nim">{{ errDO.nim }}</small>
+      </div>
+      <div>
+        <label class="form-label">Nama</label>
+        <input
+          type="text"
+          class="form-control"
+          v-model="newDO.nama"
+          placeholder="Masukkan nama mahasiswa"
+        />
+        <small class="text-danger" v-if="errDO.nama">{{ errDO.nama }}</small>
+      </div>
+      <div>
+        <label class="form-label">Ekspedisi</label>
+        <select class="form-select" v-model="newDO.ekspedisi">
+          <option value="">Pilih Ekspedisi</option>
+          <option
+            v-for="item in pengirimanList"
+            :key="item.kode"
+            :value="item.nama"
+          >
+            {{ item.nama }}
+          </option>
+        </select>
+        <small class="text-danger" v-if="errDO.ekspedisi"
+          >{{ errDO.ekspedisi }}</small
+        >
+      </div>
+      <div>
+        <label class="form-label">Paket Bahan Ajar</label>
+        <select class="form-select" v-model="selectedPaket">
+          <option value="">Pilih Paket</option>
+          <option v-for="p in paket" :key="p.kode" :value="p">
+            {{ p.kode }} - {{ p.nama }}
+          </option>
+        </select>
+        <small class="text-danger" v-if="errDO.paket">{{ errDO.paket }}</small>
+      </div>
+      <div v-if="selectedPaket" class="alert alert-info">
+        <strong>Isi Paket:</strong>
+        <ul class="mb-0 mt-2">
+          <li v-for="(isi, i) in selectedPaket.isi" :key="i">{{ isi }}</li>
+        </ul>
+      </div>
+      <div>
+        <label class="form-label">Tanggal Kirim</label>
+        <input type="date" class="form-control" v-model="newDO.tanggalRaw" />
+        <small class="text-muted"
+          >Format tampilan: {{ formatTanggal(newDO.tanggalRaw) }}</small
+        >
+      </div>
+      <div>
+        <label class="form-label">Total Harga</label>
+        <input
+          type="text"
+          class="form-control"
+          :value="formatRupiah(totalHarga)"
+          readonly
+        />
+      </div>
+      <template v-slot:footer>
+        <button class="btn btn-secondary" @click="showModalTambah = false">
+          Batal
+        </button>
+        <button class="btn btn-primary" @click="tambahDO">Simpan</button>
+      </template>
+    </app-modal>
+  </div>
+</template>
